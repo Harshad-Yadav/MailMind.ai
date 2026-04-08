@@ -17,7 +17,7 @@ This project is **not just a classifier** — it is a **high-fidelity AI trainin
 
 > Build a system where AI agents *learn to operate inside a live enterprise inbox* using realistic constraints, feedback loops, and decision-making scenarios.
 
-![Project Home Page](output/1.jpeg)
+![Project Home Page](output/output1.jpeg)
 
 ## 🔗 Live Demo
 
