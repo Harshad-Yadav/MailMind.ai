@@ -270,10 +270,8 @@ Simulates actual enterprise workflows — directly applicable to industry system
 
 ## 🔮 Future Improvements
 
-* 📚 Expand datasets (legal, security, spam)
 * 🧠 Add long-term agent memory
 * 🤝 Multi-agent collaboration
-* 📊 Real-time analytics dashboard
 * 🎯 Reinforcement learning training loop
 
 ---
