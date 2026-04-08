@@ -40,14 +40,14 @@ Design an AI-powered system where an agent can:
 
 ## 🧠 Key Features
 
-✅ Real-world enterprise simulation (not a toy problem)
+✅ Real-world enterprise simulation (not a toy problem) <br>
 ✅ Multi-turn workflows with escalation logic <br>
-✅ SLA-aware decision-making
-✅ Deterministic grading system
-✅ Reward-based learning environment
-✅ OpenEnv compliant architecture
-✅ Interactive frontend dashboard
-✅ Free LLM integration via Hugging Face Router
+✅ SLA-aware decision-making <br>
+✅ Deterministic grading system <br>
+✅ Reward-based learning environment <br>
+✅ OpenEnv compliant architecture <br>
+✅ Interactive frontend dashboard <br>
+✅ Free LLM integration via Hugging Face Router <br>
 
 ---
 
