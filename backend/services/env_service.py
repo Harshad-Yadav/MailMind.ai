@@ -41,47 +41,78 @@ class OpenEnvEmailTriageEnvironment:
         return TASKS
 
     def reset(self, task_id: str | None = None, seed: int | None = None) -> EnvironmentState:
-        import random
-        task = TASK_MAP[task_id] if task_id else TASKS[0]
-        seed = seed if seed is not None else random.randint(0, 1000000)
-        row = self.dataset_service.sample(seed=seed, spam_only=False)
-        queue_context = self._queue_context(row=row, task=task, seed=seed)
-        self.episode_plan = self._build_episode_plan(row=row, task=task, queue_context=queue_context)
-        self.plan_index = 0
-        turn = self.episode_plan[0]
-        self.current = TaskInstance(task=task, email=turn["email"], expected=turn["expected"])
-        state = EnvironmentState(
-            environment_id=self.settings.environment_name,
-            episode_id=str(uuid4()),
-            step_count=0,
-            max_steps=len(self.episode_plan),
-            current_turn=1,
-            turn_label=str(turn["label"]),
-            task=task,
-            email=turn["email"],
-            thread_messages=[turn["thread_message"]],
-            pending_actions=list(turn["pending_actions"]),
-            history=[],
-            latest_prediction={},
-            human_feedback=[],
-            last_grade={},
-            sla_status=str(turn["expected"].get("sla_status", "healthy")),
-            escalation_level=self._escalation_level(turn["expected"]),
-            human_review_required=bool(turn["expected"].get("human_review_required", False)),
-            done=False,
-            reward_total=0.0,
-            completion_score=0.0,
-            queue_depth=int(turn["context"]["queue_depth"]),
-            pending_sla_breaches=int(turn["context"]["pending_sla_breaches"]),
-            reviewer_backlog=int(turn["context"]["reviewer_backlog"]),
-            customer_history_summary=str(turn["context"]["customer_history_summary"]),
-            business_impact=str(turn["context"]["business_impact"]),
-            suggested_departments=list(turn["context"]["suggested_departments"]),
-            ownership_status=str(turn["context"]["ownership_status"]),
-        )
-        self.current_state = state
-        persist_episode(state.episode_id, task.task_id, state.email.email_id, state.model_dump())
-        return state
+        try:
+            import random
+            task = TASK_MAP[task_id] if task_id else TASKS[0]
+            seed = seed if seed is not None else random.randint(0, 1000000)
+            try:
+                row = self.dataset_service.sample(seed=seed, spam_only=False)
+            except Exception:
+                row = self._fallback_row()
+            
+            queue_context = self._queue_context(row=row, task=task, seed=seed)
+            self.episode_plan = self._build_episode_plan(row=row, task=task, queue_context=queue_context)
+            self.plan_index = 0
+            turn = self.episode_plan[0]
+            self.current = TaskInstance(task=task, email=turn["email"], expected=turn["expected"])
+            state = EnvironmentState(
+                environment_id=self.settings.environment_name,
+                episode_id=str(uuid4()),
+                step_count=0,
+                max_steps=len(self.episode_plan),
+                current_turn=1,
+                turn_label=str(turn["label"]),
+                task=task,
+                email=turn["email"],
+                thread_messages=[turn["thread_message"]],
+                pending_actions=list(turn["pending_actions"]),
+                history=[],
+                latest_prediction={},
+                human_feedback=[],
+                last_grade={},
+                sla_status=str(turn["expected"].get("sla_status", "healthy")),
+                escalation_level=self._escalation_level(turn["expected"]),
+                human_review_required=bool(turn["expected"].get("human_review_required", False)),
+                done=False,
+                reward_total=0.0,
+                completion_score=0.0,
+                queue_depth=int(turn["context"]["queue_depth"]),
+                pending_sla_breaches=int(turn["context"]["pending_sla_breaches"]),
+                reviewer_backlog=int(turn["context"]["reviewer_backlog"]),
+                customer_history_summary=str(turn["context"]["customer_history_summary"]),
+                business_impact=str(turn["context"]["business_impact"]),
+                suggested_departments=list(turn["context"]["suggested_departments"]),
+                ownership_status=str(turn["context"]["ownership_status"]),
+            )
+            self.current_state = state
+            try:
+                persist_episode(state.episode_id, task.task_id, state.email.email_id, state.model_dump())
+            except Exception:
+                pass
+            return state
+        except Exception:
+            fallback_state = EnvironmentState(
+                environment_id=self.settings.environment_name,
+                episode_id=str(uuid4()),
+                step_count=0,
+                max_steps=1,
+                task=TASKS[0],
+                email=EmailMessage(
+                    email_id="fallback-id",
+                    thread_id="fallback-thread",
+                    subject="Environment Reset Failed",
+                    customer_name="System",
+                    customer_tier="none",
+                    received_at=datetime.now(UTC).isoformat(),
+                    sla_due_at=datetime.now(UTC).isoformat(),
+                    email_text="Environment encountered a critical error during reset and is running in safety mode."
+                ),
+                done=True,
+                reward_total=0.0,
+                completion_score=0.0,
+            )
+            self.current_state = fallback_state
+            return fallback_state
 
     def state(self) -> EnvironmentState:
         if self.current_state is None:
@@ -92,8 +123,11 @@ class OpenEnvEmailTriageEnvironment:
         return self._observation_from_state(self.state())
 
     def model_suggestion(self) -> dict[str, object]:
-        current = self.state()
-        return self.inference_engine.predict(current.email.email_text, customer_name=current.email.customer_name)
+        try:
+            current = self.state()
+            return self.inference_engine.predict(current.email.email_text, customer_name=current.email.customer_name)
+        except Exception:
+            return {}
 
     def analytics_snapshot(self) -> dict[str, object]:
         current = self.current_state
@@ -137,7 +171,9 @@ class OpenEnvEmailTriageEnvironment:
     def apply_feedback(self, request: FeedbackRequest) -> FeedbackResponse:
         if self.current_state is None:
             self.reset()
-        assert self.current_state is not None
+        if self.current_state is None:
+            # Should not happen given reset() protections
+            raise RuntimeError("Environment failed to initialize")
 
         entry = HumanFeedbackEntry(
             feedback_id=str(uuid4()),
@@ -172,7 +208,10 @@ class OpenEnvEmailTriageEnvironment:
             "feedback": entry.model_dump(),
             "reward_delta": round(reward_delta, 4),
         }
-        persist_step(self.current_state.episode_id, reward_delta, self.current_state.done, self.current_state.model_dump())
+        try:
+            persist_step(self.current_state.episode_id, reward_delta, self.current_state.done, self.current_state.model_dump())
+        except Exception:
+            pass
         return FeedbackResponse(
             observation=self._observation_from_state(self.current_state),
             state=deepcopy(self.current_state),
@@ -181,102 +220,123 @@ class OpenEnvEmailTriageEnvironment:
         )
 
     def step(self, action: AgentAction) -> StepResponse:
-        if self.current is None or self.current_state is None:
-            self.reset()
-        assert self.current is not None
-        assert self.current_state is not None
+        try:
+            if self.current is None or self.current_state is None:
+                self.reset()
+            
+            if self.current is None or self.current_state is None:
+                raise RuntimeError("Failed to reset environment")
 
-        turn = self.episode_plan[self.plan_index]
-        grade = grade_action(task=self.current.task, action=action, expected=self.current.expected)
-        suggestion = self.inference_engine.predict(self.current.email.email_text, customer_name=self.current.email.customer_name)
-        self.current_state.step_count += 1
-        self.current_state.reward_total = round(self.current_state.reward_total + grade.reward, 4)
-        self.current_state.ownership_status = self._ownership_status_from_action(action)
-        agent_message = self._agent_thread_message(action=action, turn_label=str(turn["label"]), episode_step=self.current_state.step_count)
-        self.current_state.thread_messages.append(agent_message)
-        self.current_state.latest_prediction = {
-            "agent_action": action.model_dump(),
-            "model_suggestion": suggestion,
-            "graded_at": datetime.now(UTC).isoformat(),
-        }
-        self.current_state.last_grade = {
-            "score": grade.score,
-            "reward": grade.reward,
-            "score_breakdown": grade.score_breakdown,
-            "mistakes": grade.mistakes,
-            "matched": grade.matched,
-            "partial_progress": grade.partial_progress,
-            "penalty_flags": grade.penalty_flags,
-        }
-        self.current_state.history.append(
-            {
-                "step": self.current_state.step_count,
-                "turn_label": self.current_state.turn_label,
-                "action": action.model_dump(),
-                "reward": grade.reward,
+            turn = self.episode_plan[self.plan_index]
+            grade = grade_action(task=self.current.task, action=action, expected=self.current.expected)
+            
+            try:
+                suggestion = self.inference_engine.predict(self.current.email.email_text, customer_name=self.current.email.customer_name)
+            except Exception:
+                suggestion = {}
+
+            self.current_state.step_count += 1
+            self.current_state.reward_total = round(self.current_state.reward_total + grade.reward, 4)
+            self.current_state.ownership_status = self._ownership_status_from_action(action)
+            agent_message = self._agent_thread_message(action=action, turn_label=str(turn["label"]), episode_step=self.current_state.step_count)
+            self.current_state.thread_messages.append(agent_message)
+            self.current_state.latest_prediction = {
+                "agent_action": action.model_dump(),
+                "model_suggestion": suggestion,
+                "graded_at": datetime.now(UTC).isoformat(),
+            }
+            self.current_state.last_grade = {
                 "score": grade.score,
+                "reward": grade.reward,
+                "score_breakdown": grade.score_breakdown,
                 "mistakes": grade.mistakes,
                 "matched": grade.matched,
-                "score_breakdown": grade.score_breakdown,
                 "partial_progress": grade.partial_progress,
                 "penalty_flags": grade.penalty_flags,
             }
-        )
+            self.current_state.history.append(
+                {
+                    "step": self.current_state.step_count,
+                    "turn_label": self.current_state.turn_label,
+                    "action": action.model_dump(),
+                    "reward": grade.reward,
+                    "score": grade.score,
+                    "mistakes": grade.mistakes,
+                    "matched": grade.matched,
+                    "score_breakdown": grade.score_breakdown,
+                    "partial_progress": grade.partial_progress,
+                    "penalty_flags": grade.penalty_flags,
+                }
+            )
 
-        info: dict[str, object] = {
-            "score_breakdown": grade.score_breakdown,
-            "mistakes": grade.mistakes,
-            "matched": grade.matched,
-            "partial_progress": grade.partial_progress,
-            "penalty_flags": grade.penalty_flags,
-            "suggestion": suggestion,
-            "next_turn_generated": False,
-        }
+            info: dict[str, object] = {
+                "score_breakdown": grade.score_breakdown,
+                "mistakes": grade.mistakes,
+                "matched": grade.matched,
+                "partial_progress": grade.partial_progress,
+                "penalty_flags": grade.penalty_flags,
+                "suggestion": suggestion,
+                "next_turn_generated": False,
+            }
 
-        has_next_turn = self.plan_index + 1 < len(self.episode_plan)
-        if has_next_turn:
-            self.plan_index += 1
-            next_turn = self.episode_plan[self.plan_index]
-            self.current = TaskInstance(task=self.current.task, email=next_turn["email"], expected=next_turn["expected"])
-            self.current_state.email = next_turn["email"]
-            self.current_state.current_turn = self.plan_index + 1
-            self.current_state.turn_label = str(next_turn["label"])
-            self.current_state.pending_actions = list(next_turn["pending_actions"])
-            self.current_state.sla_status = str(next_turn["expected"].get("sla_status", "healthy"))
-            self.current_state.escalation_level = self._escalation_level(next_turn["expected"])
-            self.current_state.human_review_required = bool(next_turn["expected"].get("human_review_required", False))
-            self.current_state.done = False
-            self.current_state.queue_depth = int(next_turn["context"]["queue_depth"])
-            self.current_state.pending_sla_breaches = int(next_turn["context"]["pending_sla_breaches"])
-            self.current_state.reviewer_backlog = int(next_turn["context"]["reviewer_backlog"])
-            self.current_state.customer_history_summary = str(next_turn["context"]["customer_history_summary"])
-            self.current_state.business_impact = str(next_turn["context"]["business_impact"])
-            self.current_state.suggested_departments = list(next_turn["context"]["suggested_departments"])
-            self.current_state.thread_messages.append(next_turn["thread_message"])
-            info["next_turn_generated"] = True
-            info["next_turn_label"] = next_turn["label"]
-        else:
-            self.current_state.pending_actions = ["episode_complete"]
-            self.current_state.done = True
+            has_next_turn = self.plan_index + 1 < len(self.episode_plan)
+            if has_next_turn:
+                self.plan_index += 1
+                next_turn = self.episode_plan[self.plan_index]
+                self.current = TaskInstance(task=self.current.task, email=next_turn["email"], expected=next_turn["expected"])
+                self.current_state.email = next_turn["email"]
+                self.current_state.current_turn = self.plan_index + 1
+                self.current_state.turn_label = str(next_turn["label"])
+                self.current_state.pending_actions = list(next_turn["pending_actions"])
+                self.current_state.sla_status = str(next_turn["expected"].get("sla_status", "healthy"))
+                self.current_state.escalation_level = self._escalation_level(next_turn["expected"])
+                self.current_state.human_review_required = bool(next_turn["expected"].get("human_review_required", False))
+                self.current_state.done = False
+                self.current_state.queue_depth = int(next_turn["context"]["queue_depth"])
+                self.current_state.pending_sla_breaches = int(next_turn["context"]["pending_sla_breaches"])
+                self.current_state.reviewer_backlog = int(next_turn["context"]["reviewer_backlog"])
+                self.current_state.customer_history_summary = str(next_turn["context"]["customer_history_summary"])
+                self.current_state.business_impact = str(next_turn["context"]["business_impact"])
+                self.current_state.suggested_departments = list(next_turn["context"]["suggested_departments"])
+                self.current_state.thread_messages.append(next_turn["thread_message"])
+                info["next_turn_generated"] = True
+                info["next_turn_label"] = next_turn["label"]
+            else:
+                self.current_state.pending_actions = ["episode_complete"]
+                self.current_state.done = True
 
-        self.current_state.completion_score = self._completion_score(self.current_state)
-        reward_detail = RewardSignal(
-            score=grade.score,
-            score_breakdown=grade.score_breakdown,
-            matched=grade.matched,
-            mistakes=grade.mistakes,
-            partial_progress=grade.partial_progress,
-            penalty_flags=grade.penalty_flags,
-        )
-        persist_step(self.current_state.episode_id, grade.reward, self.current_state.done, self.current_state.model_dump())
-        return StepResponse(
-            observation=self._observation_from_state(self.current_state),
-            state=deepcopy(self.current_state),
-            reward=grade.reward,
-            reward_detail=reward_detail,
-            done=self.current_state.done,
-            info=info,
-        )
+            self.current_state.completion_score = self._completion_score(self.current_state)
+            reward_detail = RewardSignal(
+                score=grade.score,
+                score_breakdown=grade.score_breakdown,
+                matched=grade.matched,
+                mistakes=grade.mistakes,
+                partial_progress=grade.partial_progress,
+                penalty_flags=grade.penalty_flags,
+            )
+            try:
+                persist_step(self.current_state.episode_id, grade.reward, self.current_state.done, self.current_state.model_dump())
+            except Exception:
+                pass
+
+            return StepResponse(
+                observation=self._observation_from_state(self.current_state),
+                state=deepcopy(self.current_state),
+                reward=grade.reward,
+                reward_detail=reward_detail,
+                done=self.current_state.done,
+                info=info,
+            )
+        except Exception as e:
+            fallback_state = self.current_state or self.reset()
+            return StepResponse(
+                observation=self._observation_from_state(fallback_state),
+                state=deepcopy(fallback_state),
+                reward=0.0,
+                reward_detail=RewardSignal(score=0.0),
+                done=True,
+                info={"error": str(e)},
+            )
 
     def _observation_from_state(self, state: EnvironmentState) -> TriageObservation:
         return TriageObservation(
@@ -305,6 +365,26 @@ class OpenEnvEmailTriageEnvironment:
             suggested_departments=list(state.suggested_departments),
             ownership_status=state.ownership_status,
         )
+
+    def _fallback_row(self) -> dict[str, object]:
+        return {
+            "email_id": "fallback-id",
+            "thread_id": "fallback-thread",
+            "subject": "System Warning: Dataset Connectivity Issue",
+            "customer_name": "System Monitor",
+            "customer_tier": "standard",
+            "received_at": datetime.now(UTC).isoformat(),
+            "sla_due_at": (datetime.now(UTC) + timedelta(hours=24)).isoformat(),
+            "email_text": "The environment is running in fallback mode because the dataset service is unavailable.",
+            "category": "operations",
+            "priority": "low",
+            "department": "operations",
+            "spam": 0,
+            "sentiment": "neutral",
+            "urgency": "low",
+            "draft_response": "The triage system is currently experiencing technical difficulties with dataset access.",
+            "escalation_required": 0,
+        }
 
     def _completion_score(self, state: EnvironmentState) -> float:
         if not state.history:
