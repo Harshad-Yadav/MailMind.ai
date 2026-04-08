@@ -1,0 +1,12 @@
+﻿version: "3.9"
+services:
+  email-triage:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "7860:7860"
+    environment:
+      MODEL_BACKEND: classical
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}

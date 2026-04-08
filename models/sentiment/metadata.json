@@ -1,0 +1,16 @@
+{
+  "backend": "classical",
+  "target": "sentiment",
+  "labels": [
+    "frustrated",
+    "negative",
+    "neutral",
+    "positive"
+  ],
+  "metrics": {
+    "accuracy": 1.0,
+    "precision_weighted": 1.0,
+    "recall_weighted": 1.0,
+    "f1_weighted": 1.0
+  }
+}

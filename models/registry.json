@@ -1,0 +1,24 @@
+{
+  "models": {
+    "category": {
+      "path": "models/category",
+      "backend": "classical"
+    },
+    "priority": {
+      "path": "models/priority",
+      "backend": "classical"
+    },
+    "department": {
+      "path": "models/department",
+      "backend": "classical"
+    },
+    "spam": {
+      "path": "models/spam",
+      "backend": "classical"
+    },
+    "sentiment": {
+      "path": "models/sentiment",
+      "backend": "classical"
+    }
+  }
+}
