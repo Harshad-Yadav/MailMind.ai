@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import random
 import sqlite3
@@ -219,4 +219,8 @@ def generate_and_save(rows: int = 5000, seed: int = 42) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    generate_and_save()
+    try:
+        generate_and_save()
+        print("Data generation successful.")
+    except Exception as e:
+        print(f"Data generation failed: {e}. If this is building in a protected environment, ensure 'dataset/' is writable.")
