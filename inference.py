@@ -8,10 +8,10 @@ import httpx
 from openai import OpenAI
 
 # Configuration
-API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+# Configuration - Strictly using validator-injected environment variables
+API_BASE_URL = os.getenv("API_BASE_URL")
+API_KEY = os.getenv("API_KEY")
 MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Meta-Llama-3-8B-Instruct")
-# Prioritize API_KEY for validator proxy compliance
-API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 ENV_URL = os.getenv("ENV_URL", "http://localhost:7860")
 TASK_ID = os.getenv("TASK_ID", "task-full-enterprise-hard")
 MAX_STEPS = 5
@@ -67,7 +67,15 @@ def build_prompt(obs: dict) -> str:
     """).strip()
 
 async def main():
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    # Strict initialization for LiteLLM proxy compatibility
+    base_url = os.environ.get("API_BASE_URL")
+    api_key = os.environ.get("API_KEY")
+    
+    if not base_url or not api_key:
+        print(f"[WARN] API_BASE_URL or API_KEY missing. Base: {base_url}, Key: {'set' if api_key else 'missing'}")
+        # In evaluation Phase 2, these MUST be present.
+    
+    client = OpenAI(base_url=base_url, api_key=api_key)
     rewards = []
     steps_taken = 0
     success = False
