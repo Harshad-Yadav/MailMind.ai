@@ -10,7 +10,8 @@ from openai import OpenAI
 # Configuration
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Meta-Llama-3-8B-Instruct")
-HF_TOKEN = os.getenv("HF_TOKEN")
+# Prioritize API_KEY for validator proxy compliance
+API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 ENV_URL = os.getenv("ENV_URL", "http://localhost:7860")
 TASK_ID = os.getenv("TASK_ID", "task-full-enterprise-hard")
 MAX_STEPS = 5
@@ -66,7 +67,7 @@ def build_prompt(obs: dict) -> str:
     """).strip()
 
 async def main():
-    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
     rewards = []
     steps_taken = 0
     success = False
