@@ -40,15 +40,18 @@ def safe_parse_json(text: str) -> dict:
     try: return json.loads(text[start:end+1])
     except: return {}
 
-async def wait_for_env(timeout=30):
+async def wait_for_env(timeout=300):
+    print(f"[*] Waiting for environment at {ENV_URL} (timeout={timeout}s)...", flush=True)
     start_time = time.time()
     async with httpx.AsyncClient() as client:
         while time.time() - start_time < timeout:
             try:
                 resp = await client.get(f"{ENV_URL}/health")
-                if resp.status_code == 200: return True
+                if resp.status_code == 200:
+                    print(f"[+] Environment is healthy after {int(time.time() - start_time)}s", flush=True)
+                    return True
             except: pass
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
     return False
 
 def build_prompt(obs: dict) -> str:
@@ -57,7 +60,7 @@ def build_prompt(obs: dict) -> str:
     thread_text = "\n".join([f"[{m['sender_role']}] {m['body'][:200]}" for m in messages[-3:]])
     
     return textwrap.dedent(f"""
-        Task: Triage this enterprise email.
+        Task: Triage this enterprise email according to OpenEnv criteria.
         Subject: {email.get('subject')}
         Body: {email.get('email_text')}
         Thread Context:
@@ -67,43 +70,52 @@ def build_prompt(obs: dict) -> str:
     """).strip()
 
 async def main():
-    # Strict initialization for LiteLLM proxy compatibility
-    base_url = os.environ.get("API_BASE_URL")
-    api_key = os.environ.get("API_KEY")
-    
-    if not base_url or not api_key:
-        print(f"[WARN] API_BASE_URL or API_KEY missing. Base: {base_url}, Key: {'set' if api_key else 'missing'}")
-        # In evaluation Phase 2, these MUST be present.
-    
+    # 0. Strict initialization as requested by Meta Hackathon Validator
+    try:
+        base_url = os.environ["API_BASE_URL"]
+        api_key = os.environ["API_KEY"]
+        model_name = os.getenv("MODEL_NAME", "meta-llama/Meta-Llama-3-8B-Instruct")
+    except KeyError as e:
+        print(f"[CRITICAL] Missing required validator environment variable: {e}", flush=True)
+        raise
+
     client = OpenAI(base_url=base_url, api_key=api_key)
     rewards = []
     steps_taken = 0
     success = False
     
-    log_start(task=TASK_ID, env=BENCHMARK, model=MODEL_NAME)
+    log_start(task=TASK_ID, env=BENCHMARK, model=model_name)
     
     try:
-        # 1. Wait for environment
-        if not await wait_for_env():
-            raise Exception("Environment timed out")
+        # 1. Wait for environment (Longer timeout for Docker/Space initialization)
+        if not await wait_for_env(timeout=300):
+            print("[CRITICAL] Environment startup timed out after 300s", flush=True)
+            raise TimeoutError("Environment failed to start in time.")
             
-        async with httpx.AsyncClient(timeout=30.0) as http:
+        async with httpx.AsyncClient(timeout=60.0) as http:
             # 2. Reset
+            print(f"[*] Resetting environment for task: {TASK_ID}", flush=True)
             resp = await http.post(f"{ENV_URL}/reset", params={"task_id": TASK_ID})
-            if resp.status_code != 200: raise Exception(f"Reset failed: {resp.text}")
+            if resp.status_code != 200: 
+                print(f"[CRITICAL] Reset failed: {resp.text}", flush=True)
+                raise Exception(f"Environment reset failed: {resp.status_code}")
+            
             data = resp.json()
             obs = data["observation"]
             
             for step in range(1, MAX_STEPS + 1):
-                if obs.get("done"): break
+                if obs.get("done"): 
+                    print(f"[*] Episode finished naturally at step {step-1}", flush=True)
+                    break
                 
-                # 3. LLM call
+                # 3. LLM call via Validator Proxy
                 prompt = build_prompt(obs)
                 try:
+                    print(f"[*] Requesting completion from proxy (step {step})...", flush=True)
                     completion = client.chat.completions.create(
-                        model=MODEL_NAME,
+                        model=model_name,
                         messages=[
-                            {"role": "system", "content": "You are a professional email triage JSON agent. Return ONLY JSON."},
+                            {"role": "system", "content": "You are a professional enterprise email triage agent. Output ONLY strict JSON."},
                             {"role": "user", "content": prompt}
                         ],
                         temperature=0,
@@ -111,11 +123,13 @@ async def main():
                     raw_action = completion.choices[0].message.content or "{}"
                     action_dict = safe_parse_json(raw_action)
                 except Exception as e:
+                    print(f"[!] LLM Call failed: {e}", flush=True)
                     action_dict = {"internal_note": f"LLM Error: {str(e)}"}
                 
                 # 4. Step
                 step_resp = await http.post(f"{ENV_URL}/step", json={"action": action_dict})
                 if step_resp.status_code != 200:
+                    print(f"[!] Step failed: {step_resp.text}", flush=True)
                     log_step(step, "error", 0.0, True, f"Step Failed: {step_resp.text}")
                     break
                     
@@ -134,16 +148,16 @@ async def main():
                 
             # Final Score Calculation
             score = obs.get("completion_score", 0.0)
-            success = score >= 0.7 # Example threshold
+            success = score >= 0.7 
             
     except Exception as e:
-        # Ensure we at least emit one fallback step if it crashed early
+        print(f"[FATAL] Inference loop interrupted: {e}", flush=True)
+        # If we failed before any steps, ensure we still log one fallback step
         if steps_taken == 0:
-            log_step(1, "fallback", 0.0, True, str(e))
+            log_step(1, "error", 0.0, True, str(e))
             steps_taken = 1
             rewards = [0.0]
     finally:
-        # If we didn't get a score from obs, fallback to rewards mean
         if 'score' not in locals():
             score = sum(rewards) / len(rewards) if rewards else 0.0
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
