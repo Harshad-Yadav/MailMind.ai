@@ -708,5 +708,3 @@ class OpenEnvEmailTriageEnvironment:
             }
         )
         return plan
-
-
