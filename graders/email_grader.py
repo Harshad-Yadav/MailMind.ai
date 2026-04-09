@@ -360,7 +360,15 @@ def grade_action(task: TaskDefinition, action: AgentAction, expected: dict[str, 
     total_earned = round(sum(component["earned"] for component in components), 4)
     base_score = round(total_earned / total_possible, 4) if total_possible else 0.0
     penalty_deduction = len(set(penalty_flags)) * 0.1
-    score = max(0.0, min(1.0, round(base_score - penalty_deduction, 4)))
+    
+    # Strictly enforce score in (0, 1) range as required by Phase 2 Task Validation.
+    # Scores MUST NOT be 0.0 or 1.0. We use a compression formula: 0.01 + (raw * 0.98).
+    raw_score = max(0.0, min(1.0, round(base_score - penalty_deduction, 4)))
+    score = round(0.01 + (raw_score * 0.98), 4)
+    
+    # Ensure reward follows the compressed score
+    reward = score
+    
     partial_progress = round(
         sum(1 for value in matched.values() if value) / max(len(matched), 1),
         4,
