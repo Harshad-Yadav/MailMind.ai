@@ -14,14 +14,23 @@ from tasks.catalog import TASKS
 
 class OpenAIBaselineService:
     def __init__(self) -> None:
-        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN")
-        base_url = os.getenv("API_BASE_URL") or None
-        self.default_model = os.getenv("MODEL_NAME", "gpt-4.1-mini")
+        # Prioritize validator-injected variables
+        api_key = os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN")
+        raw_base_url = os.getenv("API_BASE_URL")
+        
+        if raw_base_url:
+            base_url = raw_base_url.rstrip("/")
+            if not base_url.endswith("/v1") and "googleapis.com" not in base_url:
+                base_url = f"{base_url}/v1"
+        else:
+            base_url = None
+
+        self.default_model = os.getenv("MODEL_NAME", "gpt-4-mini")
         self.client = OpenAI(api_key=api_key, base_url=base_url) if api_key else None
 
     def run(self, model: str | None = None, episodes_per_task: int = 3, seed: int = 42) -> dict[str, Any]:
         if self.client is None:
-            raise RuntimeError("OPENAI_API_KEY or HF_TOKEN must be configured before running the baseline.")
+            raise RuntimeError("API_KEY or OPENAI_API_KEY must be configured before running the baseline.")
 
         chosen_model = model or self.default_model
         results: list[dict[str, Any]] = []
