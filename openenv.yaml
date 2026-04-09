@@ -2,8 +2,8 @@ spec_version: 1
 name: advanced-email-triage
 type: space
 runtime: fastapi
-app: server.app:app
-port: 8000
+app: backend.main:app
+port: 7860
 description: A real-world enterprise email triage operations environment. Trains agents on multi-turn routing, SLA management, sentiment analysis, and escalation governance.
 tags:
   - openenv
