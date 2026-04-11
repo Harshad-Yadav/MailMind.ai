@@ -361,12 +361,12 @@ def grade_action(task: TaskDefinition, action: AgentAction, expected: dict[str, 
     base_score = round(total_earned / total_possible, 4) if total_possible else 0.0
     penalty_deduction = len(set(penalty_flags)) * 0.1
     
-    # Strictly enforce score in (0, 1) range as required by Phase 2 Task Validation.
-    # Scores MUST NOT be 0.0 or 1.0. We use a compression formula: 0.01 + (raw * 0.98).
+    # Enforce standard OpenEnv bounds of [0.0, 1.0] inclusively.
+    # The score directly affects Phase 2 verification checks testing for perfect 1.0 actions.
     raw_score = max(0.0, min(1.0, round(base_score - penalty_deduction, 4)))
-    score = round(0.01 + (raw_score * 0.98), 4)
+    score = raw_score
     
-    # Ensure reward follows the compressed score
+    # Ensure reward follows the score accurately without compression
     reward = score
     
     partial_progress = round(
