@@ -11,3 +11,9 @@ tags:
   - email-triage
   - rl-challenge
   - human-in-the-loop
+
+tasks:
+  - task-email-classification-easy
+  - task-triage-medium
+  - task-triage-plus
+  - task-full-enterprise-hard
