@@ -117,21 +117,22 @@ def grade_action(task: TaskDefinition, action: AgentAction, expected: dict[str, 
             mistakes.append("urgent email was not assigned sufficiently high priority")
             penalty_flags.append("urgent_email_underprioritized")
 
-    spam_weight = 0.08 if task.difficulty == "hard" or expected.get("spam") == 1 else 0.04
-    spam_match = not (expected.get("spam") == 1 and action_payload.get("spam") != 1)
-    matched["spam_guardrail"] = spam_match
-    _add_component(
-        components,
-        name="spam_guardrail",
-        weight=spam_weight,
-        earned=spam_weight if spam_match else 0.0,
-        matched=spam_match,
-        mistake=None if spam_match else "spam email was not marked as spam",
-        penalty_flag="spam_not_flagged",
-    )
-    if not spam_match:
-        mistakes.append("spam email was not marked as spam")
-        penalty_flags.append("spam_not_flagged")
+    if "spam" in task.required_outputs:
+        spam_weight = 0.08 if task.difficulty == "hard" or expected.get("spam") == 1 else 0.04
+        spam_match = not (expected.get("spam") == 1 and action_payload.get("spam") != 1)
+        matched["spam_guardrail"] = spam_match
+        _add_component(
+            components,
+            name="spam_guardrail",
+            weight=spam_weight,
+            earned=spam_weight if spam_match else 0.0,
+            matched=spam_match,
+            mistake=None if spam_match else "spam email was not marked as spam",
+            penalty_flag="spam_not_flagged",
+        )
+        if not spam_match:
+            mistakes.append("spam email was not marked as spam")
+            penalty_flags.append("spam_not_flagged")
 
     if task.difficulty == "hard":
         response_weight = 0.08
