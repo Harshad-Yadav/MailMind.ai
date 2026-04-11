@@ -578,13 +578,17 @@ class OpenEnvEmailTriageEnvironment:
             "sentiment": sentiment,
             "urgency": urgency,
             "response_draft": row["draft_response"],
+            "escalation": bool(escalation_required),
             "escalation_required": escalation_required,
             "human_review_required": human_review_required,
+            "request_human_review": human_review_required,
             "sla_status": sla_status,
             "assigned_owner": self._owner_for_department(department, priority),
             "resolution_eta_hours": self._eta_for_priority(priority),
             "customer_follow_up_required": int(row["spam"]) == 0,
             "escalation_target": escalation_target,
+            "confidence": 0.95,
+            "internal_note": "Executing standardized automated triage review.",
         }
 
     def _build_episode_plan(self, row: dict[str, object], task, queue_context: dict[str, object]) -> list[dict[str, object]]:
