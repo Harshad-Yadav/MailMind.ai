@@ -174,18 +174,20 @@ async def main():
                     break
                 
             # Final Score Calculation
-            score = obs.get("completion_score", 0.0) if obs else 0.0
+            score = obs.get("completion_score", 0.01) if obs else 0.01
+            score = max(0.01, min(0.99, float(score)))
             success = score >= 0.7 
             
     except Exception as e:
         print(f"[FATAL] Global inference error: {e}", flush=True)
         if steps_taken == 0:
-            log_step( step=1, action="error", reward=0.0, done=True, error=str(e))
+            log_step( step=1, action="error", reward=0.01, done=True, error=str(e))
             steps_taken = 1
-            rewards = [0.0]
+            rewards = [0.01]
     finally:
         if 'score' not in locals():
-            score = sum(rewards) / len(rewards) if rewards else 0.0
+            raw = sum(rewards) / len(rewards) if rewards else 0.01
+            score = max(0.01, min(0.99, float(raw)))
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 if __name__ == "__main__":
