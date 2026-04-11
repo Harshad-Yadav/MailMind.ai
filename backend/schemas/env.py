@@ -44,7 +44,7 @@ class AgentAction(BaseModel):
     urgency: str | None = None
     response_draft: str | None = None
     escalation: bool = False
-    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    confidence: float | None = Field(default=None, gt=0.0, lt=1.0)
     internal_note: str | None = None
     request_human_review: bool = False
     assigned_owner: str | None = None
@@ -87,7 +87,7 @@ class TriageObservation(BaseModel):
     human_review_required: bool = False
     done: bool = False
     history_length: int = 0
-    completion_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    completion_score: float = Field(default=0.01, gt=0.0, lt=1.0)
     queue_depth: int = 0
     pending_sla_breaches: int = 0
     reviewer_backlog: int = 0
@@ -98,11 +98,11 @@ class TriageObservation(BaseModel):
 
 
 class RewardSignal(BaseModel):
-    score: float = Field(ge=0.0, le=1.0)
+    score: float = Field(gt=0.0, lt=1.0)
     score_breakdown: dict[str, float] = Field(default_factory=dict)
     matched: dict[str, bool] = Field(default_factory=dict)
     mistakes: list[str] = Field(default_factory=list)
-    partial_progress: float = Field(default=0.0, ge=0.0, le=1.0)
+    partial_progress: float = Field(default=0.01, gt=0.0, lt=1.0)
     penalty_flags: list[str] = Field(default_factory=list)
 
 
@@ -126,7 +126,7 @@ class EnvironmentState(BaseModel):
     human_review_required: bool = False
     done: bool = False
     reward_total: float = 0.0
-    completion_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    completion_score: float = Field(default=0.01, gt=0.0, lt=1.0)
     queue_depth: int = 0
     pending_sla_breaches: int = 0
     reviewer_backlog: int = 0
@@ -148,7 +148,7 @@ class StepRequest(BaseModel):
 class StepResponse(BaseModel):
     observation: TriageObservation
     state: EnvironmentState
-    reward: float = Field(ge=0.0, le=1.0)
+    reward: float = Field(gt=0.0, lt=1.0)
     reward_detail: RewardSignal
     done: bool
     info: dict[str, Any]
@@ -169,10 +169,10 @@ class FeedbackResponse(BaseModel):
 
 
 class GraderResponse(BaseModel):
-    score: float = Field(ge=0.0, le=1.0)
-    reward: float = Field(ge=0.0, le=1.0)
+    score: float = Field(gt=0.0, lt=1.0)
+    reward: float = Field(gt=0.0, lt=1.0)
     score_breakdown: dict[str, float]
     mistakes: list[str]
     matched: dict[str, bool]
-    partial_progress: float = Field(ge=0.0, le=1.0)
+    partial_progress: float = Field(gt=0.0, lt=1.0)
     penalty_flags: list[str] = Field(default_factory=list)
