@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import sqlite3
@@ -41,28 +41,34 @@ def initialize_database() -> None:
 
 
 def persist_episode(episode_id: str, task_id: str, email_id: str, state: dict[str, Any]) -> None:
-    settings = get_settings()
-    initialize_database()
-    with sqlite3.connect(settings.sqlite_path) as connection:
-        connection.execute(
-            """
-            INSERT OR REPLACE INTO episodes (episode_id, task_id, email_id, state_json)
-            VALUES (?, ?, ?, ?)
-            """,
-            (episode_id, task_id, email_id, json.dumps(state)),
-        )
-        connection.commit()
+    try:
+        settings = get_settings()
+        initialize_database()
+        with sqlite3.connect(settings.sqlite_path) as connection:
+            connection.execute(
+                """
+                INSERT OR REPLACE INTO episodes (episode_id, task_id, email_id, state_json)
+                VALUES (?, ?, ?, ?)
+                """,
+                (episode_id, task_id, email_id, json.dumps(state)),
+            )
+            connection.commit()
+    except Exception as e:
+        print(f"WARN: Failed to persist episode telemetry to SQLite: {e}")
 
 
 def persist_step(episode_id: str, reward: float, done: bool, payload: dict[str, Any]) -> None:
-    settings = get_settings()
-    initialize_database()
-    with sqlite3.connect(settings.sqlite_path) as connection:
-        connection.execute(
-            """
-            INSERT INTO steps (episode_id, reward, done, payload_json)
-            VALUES (?, ?, ?, ?)
-            """,
-            (episode_id, reward, int(done), json.dumps(payload)),
-        )
-        connection.commit()
+    try:
+        settings = get_settings()
+        initialize_database()
+        with sqlite3.connect(settings.sqlite_path) as connection:
+            connection.execute(
+                """
+                INSERT INTO steps (episode_id, reward, done, payload_json)
+                VALUES (?, ?, ?, ?)
+                """,
+                (episode_id, reward, int(done), json.dumps(payload)),
+            )
+            connection.commit()
+    except Exception as e:
+        print(f"WARN: Failed to persist step telemetry to SQLite: {e}")
