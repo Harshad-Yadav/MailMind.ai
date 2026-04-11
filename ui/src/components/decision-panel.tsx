@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Bot, ShieldCheck, Sparkles, Target, AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Select, Textarea } from "@/components/ui/input";
-import type { AgentAction } from "@/types/env";
 import { useTriageStore } from "@/store/useTriageStore";
 
 const categories = ["billing", "technical_support", "sales", "legal", "human_resources", "security", "operations", "partnership", ""];
@@ -13,73 +12,27 @@ const departments = ["finance", "support", "sales", "legal", "people_ops", "secu
 const sentiments = ["positive", "neutral", "negative", "frustrated", ""];
 const urgencies = ["low", "medium", "high", "critical", ""];
 
-// Empty default action to prevent automatic identical baseline passing
-const initialAction: AgentAction = {
-  category: "",
-  priority: "",
-  department: "",
-  spam: 0,
-  sentiment: "",
-  urgency: "",
-  response_draft: "",
-  escalation: false,
-  confidence: 0.75,
-  internal_note: "",
-  request_human_review: false,
-};
-
 export function DecisionPanel() {
-  const [action, setAction] = useState<AgentAction>(initialAction);
-  const [autoMode, setAutoMode] = useState<boolean>(false);
   const [submissionWarning, setSubmissionWarning] = useState<string | null>(null);
 
+  const formData = useTriageStore((state) => state.formData);
+  const setFormData = useTriageStore((state) => state.setFormData);
+  const autoMode = useTriageStore((state) => state.autoMode);
+  const setAutoMode = useTriageStore((state) => state.setAutoMode);
+  
   const submitAction = useTriageStore((state) => state.submitAction);
   const lastStep = useTriageStore((state) => state.lastStep);
   const loading = useTriageStore((state) => state.loading);
   const state = useTriageStore((store) => store.state);
-  const analytics = useTriageStore((store) => store.analytics);
-
-  // Sync state explicitly per episode to prevent bleed
-  useEffect(() => {
-    if (state) {
-      setAction((current) => ({
-        ...initialAction,
-        request_human_review: state.human_review_required,
-      }));
-      setSubmissionWarning(null);
-    }
-  }, [state?.episode_id]);
-
-  // Hook auto-fill mechanics
-  useEffect(() => {
-    if (autoMode) {
-      let suggested: Partial<AgentAction> = {};
-      if (lastStep?.info?.suggestion) {
-        suggested = lastStep.info.suggestion as Partial<AgentAction>;
-      } else if (analytics?.episode?.suggested_action) {
-        suggested = (analytics.episode?.suggested_action ?? {}) as Partial<AgentAction>;
-      }
-      
-      if (Object.keys(suggested).length > 0) {
-        setAction((current) => ({
-          ...current,
-          ...suggested,
-          confidence: suggested.confidence ?? 0.85,
-          internal_note: suggested.internal_note || "Auto-routed via model suggestion.",
-          response_draft: suggested.response_draft || "",
-        }));
-      }
-    }
-  }, [autoMode, lastStep, analytics?.episode?.suggested_action, state?.episode_id]);
 
   const handleSubmit = async () => {
     // Validate submission to ensure fields were modified
-    if (!autoMode && action.category === "" && action.priority === "") {
+    if (!autoMode && formData.category === "" && formData.priority === "") {
       setSubmissionWarning("Please select valid fields or enable AUTO MODE.");
       return;
     }
     setSubmissionWarning(null);
-    await submitAction(action);
+    await submitAction();
   };
 
   const getFieldErrorClass = (field: string) => {
@@ -108,7 +61,7 @@ export function DecisionPanel() {
             <CardDescription className="mt-1 font-medium text-slate-600">Align every triage decision with enterprise governance and risk policy.</CardDescription>
           </div>
           <div className="flex items-center gap-3">
-             <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden text-xs font-bold uppercase overflow-hidden">
+             <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden text-xs font-bold uppercase">
                 <button 
                   onClick={() => setAutoMode(false)} 
                   className={`px-3 py-1.5 transition-colors ${!autoMode ? 'bg-steel text-white' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
@@ -171,52 +124,52 @@ export function DecisionPanel() {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-steel">Category</label>
-              <Select disabled={autoMode} className={getFieldErrorClass("category")} value={action.category} onChange={(event) => setAction({ ...action, category: event.target.value })}>
+              <Select disabled={autoMode} className={getFieldErrorClass("category")} value={formData.category} onChange={(event) => setFormData({ category: event.target.value })}>
                 {categories.map((value) => <option key={value}>{value}</option>)}
               </Select>
               {getMistakeText("category")}
             </div>
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-steel">Priority</label>
-              <Select disabled={autoMode} className={getFieldErrorClass("priority")} value={action.priority} onChange={(event) => setAction({ ...action, priority: event.target.value })}>
+              <Select disabled={autoMode} className={getFieldErrorClass("priority")} value={formData.priority} onChange={(event) => setFormData({ priority: event.target.value })}>
                 {priorities.map((value) => <option key={value}>{value}</option>)}
               </Select>
               {getMistakeText("priority")}
             </div>
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-steel">Department</label>
-              <Select disabled={autoMode} className={getFieldErrorClass("department")} value={action.department} onChange={(event) => setAction({ ...action, department: event.target.value })}>
+              <Select disabled={autoMode} className={getFieldErrorClass("department")} value={formData.department} onChange={(event) => setFormData({ department: event.target.value })}>
                 {departments.map((value) => <option key={value}>{value}</option>)}
               </Select>
               {getMistakeText("department")}
             </div>
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-steel">Sentiment</label>
-              <Select disabled={autoMode} className={getFieldErrorClass("sentiment")} value={action.sentiment} onChange={(event) => setAction({ ...action, sentiment: event.target.value })}>
+              <Select disabled={autoMode} className={getFieldErrorClass("sentiment")} value={formData.sentiment} onChange={(event) => setFormData({ sentiment: event.target.value })}>
                 {sentiments.map((value) => <option key={value}>{value}</option>)}
               </Select>
               {getMistakeText("sentiment")}
             </div>
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-steel">Urgency</label>
-              <Select disabled={autoMode} className={getFieldErrorClass("urgency")} value={action.urgency} onChange={(event) => setAction({ ...action, urgency: event.target.value })}>
+              <Select disabled={autoMode} className={getFieldErrorClass("urgency")} value={formData.urgency} onChange={(event) => setFormData({ urgency: event.target.value })}>
                 {urgencies.map((value) => <option key={value}>{value}</option>)}
               </Select>
               {getMistakeText("urgency")}
             </div>
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-steel">Spam</label>
-              <Input disabled={autoMode} className={getFieldErrorClass("spam_guardrail")} type="number" min={0} max={1} value={action.spam ?? 0} onChange={(event) => setAction({ ...action, spam: Number(event.target.value) })} />
+              <Input disabled={autoMode} className={getFieldErrorClass("spam_guardrail")} type="number" min={0} max={1} value={formData.spam ?? 0} onChange={(event) => setFormData({ spam: Number(event.target.value) })} />
               {getMistakeText("spam")}
             </div>
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-steel">Confidence</label>
-              <Input disabled={autoMode} className={getFieldErrorClass("confidence_calibration")} type="number" min={0} max={1} step={0.05} value={action.confidence ?? 0.75} onChange={(event) => setAction({ ...action, confidence: Number(event.target.value) })} />
+              <Input disabled={autoMode} className={getFieldErrorClass("confidence_calibration")} type="number" min={0} max={1} step={0.05} value={formData.confidence ?? 0.75} onChange={(event) => setFormData({ confidence: Number(event.target.value) })} />
               {getMistakeText("confidence")}
             </div>
             <div className="flex items-end">
-              <label className={`flex min-h-11 items-center gap-2 rounded-[1rem] border bg-white px-4 py-3 text-sm text-steel ${getFieldErrorClass("human_review")} ${autoMode ? 'border-slate-300' : 'border-slate-200'}`}>
-                <input disabled={autoMode} type="checkbox" checked={action.request_human_review ?? false} onChange={(event) => setAction({ ...action, request_human_review: event.target.checked })} />
+              <label className={`flex min-h-11 items-center gap-2 rounded-[1rem] border bg-white px-4 py-3 text-sm text-steel ${getFieldErrorClass("human_review")} ${autoMode ? 'border-primary/20' : 'border-slate-200'}`}>
+                <input disabled={autoMode} type="checkbox" checked={formData.request_human_review ?? false} onChange={(event) => setFormData({ request_human_review: event.target.checked })} />
                 Request human review on this turn
               </label>
             </div>
@@ -226,19 +179,19 @@ export function DecisionPanel() {
         <div className="grid gap-4">
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-steel">Customer-facing response draft</label>
-            <Textarea disabled={autoMode} rows={3} className={`bg-white ${getFieldErrorClass("response_draft")}`} value={action.response_draft ?? ""} onChange={(event) => setAction({ ...action, response_draft: event.target.value })} />
+            <Textarea disabled={autoMode} rows={3} className={`bg-white ${getFieldErrorClass("response_draft")}`} value={formData.response_draft ?? ""} onChange={(event) => setFormData({ response_draft: event.target.value })} />
             {getMistakeText("response_draft")}
           </div>
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-steel">Internal triage note</label>
-            <Textarea disabled={autoMode} rows={2} className={`bg-white ${getFieldErrorClass("internal_note")}`} value={action.internal_note ?? ""} onChange={(event) => setAction({ ...action, internal_note: event.target.value })} />
+            <Textarea disabled={autoMode} rows={2} className={`bg-white ${getFieldErrorClass("internal_note")}`} value={formData.internal_note ?? ""} onChange={(event) => setFormData({ internal_note: event.target.value })} />
             {getMistakeText("internal")}
           </div>
         </div>
 
         <div className="flex flex-col gap-3 rounded-[1.4rem] border border-slate-200/70 bg-white/80 p-4 sm:flex-row sm:items-center sm:justify-between">
           <label className={`flex items-center gap-2 text-sm text-steel ${getFieldErrorClass("escalation")}`}>
-            <input disabled={autoMode} type="checkbox" checked={action.escalation ?? false} onChange={(event) => setAction({ ...action, escalation: event.target.checked })} />
+            <input disabled={autoMode} type="checkbox" checked={formData.escalation ?? false} onChange={(event) => setFormData({ escalation: event.target.checked })} />
             Escalate to a critical path
           </label>
           <Button className="h-12 rounded-[1.1rem] px-5" variant="ember" disabled={loading} onClick={handleSubmit}>
