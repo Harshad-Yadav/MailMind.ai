@@ -362,9 +362,9 @@ def grade_action(task: TaskDefinition, action: AgentAction, expected: dict[str, 
     base_score = round(total_earned / total_possible, 4) if total_possible else 0.0
     penalty_deduction = len(set(penalty_flags)) * 0.1
     
-    # Enforce standard OpenEnv bounds of [0.0, 1.0] inclusively.
-    # The score directly affects Phase 2 verification checks testing for perfect 1.0 actions.
-    raw_score = max(0.0, min(1.0, round(base_score - penalty_deduction, 4)))
+    # Enforce standard OpenEnv bounds of (0.0, 1.0) exclusive for some validators.
+    # Scaler local validator expects 0.0 < score < 1.0.
+    raw_score = max(0.01, min(0.99, round(base_score - penalty_deduction, 4)))
     score = raw_score
     
     # Ensure reward follows the score accurately without compression
