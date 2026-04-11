@@ -108,8 +108,8 @@ class OpenEnvEmailTriageEnvironment:
                     email_text="Environment encountered a critical error during reset and is running in safety mode."
                 ),
                 done=True,
-                reward_total=0.0,
-                completion_score=0.0,
+                reward_total=0.01,
+                completion_score=0.01,
             )
             self.current_state = fallback_state
             return fallback_state
