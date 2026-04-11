@@ -8,7 +8,8 @@ import { ReviewerPanel } from "@/components/reviewer-panel";
 import { useTriageStore } from "@/store/useTriageStore";
 
 export function DashboardPage() {
-  const error = useTriageStore((state) => state.error);
+  const state = useTriageStore((s) => s.state);
+  const error = useTriageStore((s) => s.error);
 
   return (
     <main className="grid-boards min-h-screen px-4 py-5 sm:px-6 lg:px-10 lg:py-8">
@@ -23,7 +24,7 @@ export function DashboardPage() {
         <div className="grid gap-6 2xl:grid-cols-[1.35fr_0.65fr]">
           <InboxList />
           <div className="grid gap-6">
-            <DecisionPanel key={currentState?.episode_id || "idle"} />
+            <DecisionPanel key={state?.episode_id || "idle"} />
             <ReviewerPanel />
           </div>
         </div>
