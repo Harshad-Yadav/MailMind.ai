@@ -1,4 +1,4 @@
-﻿import { AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 import { AnalyticsPanel } from "@/components/analytics-panel";
 import { DashboardHeader } from "@/components/dashboard-header";
@@ -23,7 +23,7 @@ export function DashboardPage() {
         <div className="grid gap-6 2xl:grid-cols-[1.35fr_0.65fr]">
           <InboxList />
           <div className="grid gap-6">
-            <DecisionPanel />
+            <DecisionPanel key={currentState?.episode_id || "idle"} />
             <ReviewerPanel />
           </div>
         </div>
