@@ -62,6 +62,7 @@ class TaskDefinition(BaseModel):
     reward_weights: dict[str, float]
     max_steps: int = 1
     supports_threading: bool = False
+    grader: str | None = None
 
 
 class TaskInstance(BaseModel):
