@@ -21,6 +21,7 @@ from backend.services.baseline_service import OpenAIBaselineService
 from backend.services.dataset_service import DatasetService
 from backend.services.env_service import OpenEnvEmailTriageEnvironment
 from graders.email_grader import grade_action
+from tasks.catalog import TASKS
 
 router = APIRouter()
 environment = OpenEnvEmailTriageEnvironment()
@@ -41,6 +42,7 @@ def metadata() -> dict[str, Any]:
         "description": "Advanced enterprise email triage environment with multi-turn routing, priority, sentiment, SLA, spam, and escalation decisions.",
         "version": "1.0.0",
         "tags": ["openenv", "email-triage", "enterprise-workflow", "agent-training"],
+        "tasks": [task.model_dump() for task in TASKS],
     }
 
 
