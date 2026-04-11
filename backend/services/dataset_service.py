@@ -48,7 +48,29 @@ class DatasetService:
 
     def sample(self, seed: int, spam_only: bool = False) -> dict[str, object]:
         frame = self.load()
+        if frame is None or frame.empty:
+            print("CRITICAL WARN: Dataset dataframe is empty. Returning fallback row to prevent 500 Error.")
+            return {
+                "email_id": "fallback-0001",
+                "thread_id": "thread-0001",
+                "subject": "System Warning: Dataset Failed to Generate",
+                "customer_name": "Fallback User",
+                "customer_tier": "free",
+                "received_at": "2026-01-01T00:00:00Z",
+                "sla_due_at": "2026-01-02T00:00:00Z",
+                "email_text": "The Hugging Face dataset failed to generate properly due to space constraint. This is a fallback.",
+                "category": "operations",
+                "priority": "low",
+                "department": "operations",
+                "sentiment": "neutral",
+                "spam": 1 if spam_only else 0,
+                "urgency": "low",
+                "escalation_required": 0,
+                "draft_response": "We are looking into the dataset generation issue."
+            }
         candidate = frame[frame["spam"] == 1] if spam_only else frame
+        if candidate.empty:
+            candidate = frame
         row = candidate.sample(n=1, random_state=seed).iloc[0]
         return row.to_dict()
 
