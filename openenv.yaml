@@ -13,6 +13,18 @@ tags:
   - human-in-the-loop
 
 tasks:
-  - task-email-classification-easy
-  - task-triage-medium
-  - task-full-enterprise-hard
+  - id: task-email-classification-easy
+    task_id: task-email-classification-easy
+    difficulty: easy
+    title: Email Classification
+    grader: graders.email_grader.grade_action
+  - id: task-triage-medium
+    task_id: task-triage-medium
+    difficulty: medium
+    title: Classification and Priority
+    grader: graders.email_grader.grade_action
+  - id: task-full-enterprise-hard
+    task_id: task-full-enterprise-hard
+    difficulty: hard
+    title: Full Enterprise Triage
+    grader: graders.email_grader.grade_action
