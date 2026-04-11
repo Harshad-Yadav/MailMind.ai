@@ -75,7 +75,7 @@ class OpenEnvEmailTriageEnvironment:
                 human_review_required=bool(turn["expected"].get("human_review_required", False)),
                 done=False,
                 reward_total=0.0,
-                completion_score=0.0,
+                completion_score=0.01,
                 queue_depth=int(turn["context"]["queue_depth"]),
                 pending_sla_breaches=int(turn["context"]["pending_sla_breaches"]),
                 reviewer_backlog=int(turn["context"]["reviewer_backlog"]),
