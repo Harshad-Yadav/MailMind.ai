@@ -332,8 +332,8 @@ class OpenEnvEmailTriageEnvironment:
             return StepResponse(
                 observation=self._observation_from_state(fallback_state),
                 state=deepcopy(fallback_state),
-                reward=0.0,
-                reward_detail=RewardSignal(score=0.0),
+                reward=0.01,
+                reward_detail=RewardSignal(score=0.01),
                 done=True,
                 info={"error": str(e)},
             )
@@ -388,7 +388,7 @@ class OpenEnvEmailTriageEnvironment:
 
     def _completion_score(self, state: EnvironmentState) -> float:
         if not state.history:
-            return 0.0
+            return 0.01
         matched_ratios = [
             sum(1 for value in (item.get("matched") or {}).values() if value) / max(len(item.get("matched") or {}), 1)
             for item in state.history
@@ -396,7 +396,8 @@ class OpenEnvEmailTriageEnvironment:
         base = sum(matched_ratios) / len(matched_ratios)
         feedback_bonus = min(len(state.human_feedback) * 0.03, 0.09)
         queue_bonus = 0.03 if state.queue_depth >= 30 and state.step_count > 0 else 0.0
-        return round(min(max(base + feedback_bonus + queue_bonus, 0.0), 1.0), 4)
+        val = base + feedback_bonus + queue_bonus
+        return round(min(max(val, 0.01), 0.99), 4)
 
     def _priority_max(self, left: str, right: str) -> str:
         return left if _PRIORITY_ORDER[left] >= _PRIORITY_ORDER[right] else right
