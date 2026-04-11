@@ -712,4 +712,4 @@ class OpenEnvEmailTriageEnvironment:
                 "context": executive_context,
             }
         )
-        return plan
+        return plan[:task.max_steps]
