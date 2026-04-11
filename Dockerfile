@@ -28,5 +28,10 @@ COPY baseline.py ./baseline.py
 COPY predict_email.py ./predict_email.py
 COPY README.md ./README.md
 COPY --from=ui-builder /app/ui/dist ./ui/dist
+
+RUN useradd -m -u 1000 user
+RUN chown -R user:user /app
+USER user
+
 EXPOSE 7860
 CMD ["sh", "-c", "python -m training.data_generator && uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-7860}"]
