@@ -1,5 +1,5 @@
 [project]
-name = "advanced-email-triage-openenv"
+name = "openenv-advanced-email-triage"
 version = "1.0.0"
 description = "Advanced enterprise email triage OpenEnv environment"
 readme = "README.md"
@@ -27,6 +27,16 @@ dependencies = [
 
 [project.scripts]
 server = "server.app:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend*", "server*", "graders*", "tasks*", "advanced_email_triage"]
+
+[tool.setuptools.package-data]
+advanced_email_triage = ["openenv.yaml"]
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
