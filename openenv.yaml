@@ -13,18 +13,18 @@ tags:
   - human-in-the-loop
 
 tasks:
-  - id: task-email-classification-easy
-    task_id: task-email-classification-easy
-    difficulty: easy
+  - task_id: task-email-classification-easy
     title: Email Classification
+    difficulty: easy
+    description: Predict the business category of an email.
     grader: graders.email_grader.grade_action
-  - id: task-triage-medium
-    task_id: task-triage-medium
-    difficulty: medium
+  - task_id: task-triage-medium
     title: Classification and Priority
+    difficulty: medium
+    description: Classify the email and assign proper priority and routing.
     grader: graders.email_grader.grade_action
-  - id: task-full-enterprise-hard
-    task_id: task-full-enterprise-hard
-    difficulty: hard
+  - task_id: task-full-enterprise-hard
     title: Full Enterprise Triage
+    difficulty: hard
+    description: Handle multi-turn enterprise triage including routing, escalation, and human review gating.
     grader: graders.email_grader.grade_action
