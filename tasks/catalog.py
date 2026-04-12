@@ -13,7 +13,7 @@ TASKS: list[TaskDefinition] = [
         reward_weights={"category": 1.0},
         max_steps=1,
         supports_threading=False,
-        grader="graders.email_grader.grade_action",
+        grader="graders.email_grader.grade_easy",
     ),
     TaskDefinition(
         task_id="task-triage-medium",
@@ -24,7 +24,7 @@ TASKS: list[TaskDefinition] = [
         reward_weights={"category": 0.4, "priority": 0.3, "department": 0.3},
         max_steps=2,
         supports_threading=True,
-        grader="graders.email_grader.grade_action",
+        grader="graders.email_grader.grade_medium",
     ),
     TaskDefinition(
         task_id="task-full-enterprise-hard",
@@ -44,7 +44,7 @@ TASKS: list[TaskDefinition] = [
         },
         max_steps=3,
         supports_threading=True,
-        grader="graders.email_grader.grade_action",
+        grader="graders.email_grader.grade_hard",
     ),
 ]
 
