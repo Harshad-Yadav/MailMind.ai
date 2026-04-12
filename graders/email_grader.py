@@ -388,3 +388,18 @@ def grade_action(task: TaskDefinition, action: AgentAction, expected: dict[str, 
         partial_progress=partial_progress,
         penalty_flags=sorted(set(penalty_flags)),
     )
+
+
+def grade_easy(task: TaskDefinition, action: AgentAction, expected: dict[str, Any]) -> GraderResponse:
+    """Grader for easy difficulty tasks."""
+    return grade_action(task, action, expected)
+
+
+def grade_medium(task: TaskDefinition, action: AgentAction, expected: dict[str, Any]) -> GraderResponse:
+    """Grader for medium difficulty tasks."""
+    return grade_action(task, action, expected)
+
+
+def grade_hard(task: TaskDefinition, action: AgentAction, expected: dict[str, Any]) -> GraderResponse:
+    """Grader for hard difficulty tasks."""
+    return grade_action(task, action, expected)
