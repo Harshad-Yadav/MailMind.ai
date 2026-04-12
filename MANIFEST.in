@@ -1,0 +1,4 @@
+include openenv.yaml
+include README.md
+include pyproject.toml
+recursive-include advanced_email_triage *.yaml
