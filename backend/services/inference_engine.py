@@ -6,7 +6,11 @@ from pathlib import Path
 from typing import Any
 
 import joblib
-from transformers import pipeline
+
+try:
+    from transformers import pipeline
+except Exception:
+    pipeline = None
 
 from backend.core.config import get_settings
 from training.constants import CATEGORY_TO_DEPARTMENT, DEPARTMENT_TO_RESPONSE_TONE
@@ -56,7 +60,11 @@ class InferenceEngine:
         if backend == "classical":
             loaded = joblib.load(model_path / "model.joblib")
         elif backend == "transformer":
-            loaded = pipeline("text-classification", model=str(model_path), tokenizer=str(model_path), truncation=True)
+            if pipeline is None:
+                loaded = None
+                backend = "heuristic"
+            else:
+                loaded = pipeline("text-classification", model=str(model_path), tokenizer=str(model_path), truncation=True)
         else:
             loaded = None
         self._cache[target] = (backend, loaded)
