@@ -1,11 +1,10 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from starlette.responses import FileResponse
 
 from backend.api.routes import router
 from backend.core.config import get_settings
@@ -32,10 +31,3 @@ def startup() -> None:
 ui_dist = Path(settings.ui_dist_path)
 if ui_dist.exists():
     app.mount("/", StaticFiles(directory=ui_dist, html=True), name="ui")
-
-    @app.get("/{full_path:path}")
-    async def serve_ui(full_path: str):
-        index_file = ui_dist / "index.html"
-        if index_file.exists():
-            return FileResponse(index_file)
-        return {"message": "UI build not found."}
